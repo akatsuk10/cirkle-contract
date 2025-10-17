@@ -6,4 +6,14 @@ pub enum RwaError {
     CityNotFound,
     #[msg("Insufficient funds")]
     InsufficientFunds,
+    #[msg("Rate Not Valid")]
+    RateNotValid,
+    #[msg("Token Overflow")]
+    Overflow,
+    #[msg("Divide by zero")]
+    DivideByZero,
+    #[msg("Amount not valid")]
+    AmountNotValid,
+    #[msg("Invalid Mint")]
+    InvalidMint,
 }
