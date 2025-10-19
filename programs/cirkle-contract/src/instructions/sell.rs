@@ -11,12 +11,10 @@ use crate::{error::RwaError, state::Vault};
 pub struct Sell<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(mut)]
-    pub admin: Signer<'info>,
 
     #[account(
         mut,
-        seeds = [b"protocol_admin", admin.key().as_ref()],
+        seeds = [b"protocol_admin"],
         bump
     )]
     pub vault: Account<'info, Vault>,
@@ -74,7 +72,7 @@ impl<'info> Sell<'info> {
             &self.user.key(),
             sol_amount,
         );
-        let seeds: &[&[u8]] = &[b"protocol_admin", self.admin.key.as_ref(), &[vault_bump]];
+        let seeds: &[&[u8]] = &[b"protocol_admin", &[vault_bump]];
         let signer_seeds = &[&seeds[..]];
 
         invoke_signed(

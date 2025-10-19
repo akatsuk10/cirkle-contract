@@ -12,12 +12,10 @@ use crate::{error::RwaError, state::Vault};
 pub struct Buy<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(mut)]
-    pub admin: Signer<'info>,
 
     #[account(
       mut,
-      seeds = [b"protocol_admin", admin.key().as_ref()],
+      seeds = [b"protocol_admin"],
       bump
     )]
     pub vault: Account<'info, Vault>,
@@ -31,7 +29,13 @@ pub struct Buy<'info> {
     )]
     pub city_config: Account<'info, CityConfig>,
 
-    #[account(mut)]
+    #[account(
+        init_if_needed,
+        payer = user,
+        mint::decimals = 6,
+        mint::authority = vault,
+        mint::freeze_authority = vault
+    )]
     pub mint: Account<'info, Mint>,
 
     #[account(
@@ -55,6 +59,7 @@ impl<'info> Buy<'info> {
         vault_bump: u8,
     ) -> Result<()> {
         require!(circle_rate > 0, RwaError::RateNotValid);
+        
 
         let token_amount = sol_amount
             .checked_mul(1_000_000)
@@ -63,24 +68,11 @@ impl<'info> Buy<'info> {
             .ok_or(RwaError::DivideByZero)?;
 
         if self.city_config.mint == Pubkey::default() {
-            token::initialize_mint(
-                CpiContext::new(
-                    self.token_program.to_account_info(),
-                    token::InitializeMint {
-                        mint: self.mint.to_account_info(),
-                        rent: self.system_program.to_account_info(),
-                    },
-                ),
-                6,
-                &self.vault.key(),
-                Some(&self.vault.key()),
-            )?;
-
             self.city_config.mint = self.mint.key();
             self.city_config.city_name = city_name.clone();
         }
 
-        if self.user_ata.amount == 0 && self.user_ata.owner != self.user.key() {
+        if self.user_ata.amount == 0 {
             let cpi_ctx = CpiContext::new(
                 self.associated_token_program.to_account_info(),
                 associated_token::Create {
@@ -95,13 +87,12 @@ impl<'info> Buy<'info> {
             associated_token::create(cpi_ctx)?;
         }
 
-        let ix = anchor_lang::solana_program::system_instruction::transfer(
-            &self.user.key(),
-            &self.vault.key(),
-            sol_amount,
-        );
         anchor_lang::solana_program::program::invoke(
-            &ix,
+            &anchor_lang::solana_program::system_instruction::transfer(
+                &self.user.key(),
+                &self.vault.key(),
+                sol_amount,
+            ),
             &[self.user.to_account_info(), self.vault.to_account_info()],
         )?;
 
@@ -111,17 +102,15 @@ impl<'info> Buy<'info> {
             .checked_add(sol_amount)
             .ok_or(RwaError::Overflow)?;
 
-        let cpi_accounts = MintTo {
-            mint: self.mint.to_account_info(),
-            to: self.user_ata.to_account_info(),
-            authority: self.vault.to_account_info(),
-        };
-
-        let seeds: &[&[u8]] = &[b"protocol_admin", self.admin.key.as_ref(), &[vault_bump]];
+        let seeds: &[&[u8]] = &[b"protocol_admin", &[vault_bump]];
         let signer_seeds = &[&seeds[..]];
         let cpi_ctx = CpiContext::new_with_signer(
             self.token_program.to_account_info(),
-            cpi_accounts,
+            token::MintTo {
+                mint: self.mint.to_account_info(),
+                to: self.user_ata.to_account_info(),
+                authority: self.vault.to_account_info(),
+            },
             signer_seeds,
         );
 
