@@ -1,7 +1,5 @@
-use anchor_lang::{prelude::*, solana_program::{program::invoke_signed, system_instruction::transfer}};
-use anchor_spl::{
-    token::{self, Burn, Mint, Token, TokenAccount},
-};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
 
 use crate::state::CityConfig;
 use crate::{error::RwaError, state::Vault};
@@ -58,7 +56,7 @@ impl<'info> Sell<'info> {
         token_amount: u64,
         circle_rate: u64,
         sol_price_usd: u64,
-        vault_bump: u8,
+        _vault_bump: u8,
     ) -> Result<()> {
         require!(circle_rate > 0, RwaError::RateNotValid);
         require!(sol_price_usd > 0, RwaError::RateNotValid);
@@ -78,34 +76,24 @@ impl<'info> Sell<'info> {
         msg!("   Token amount to burn: {}", token_amount);
 
         // Calculate SOL to return (reverse of buy calculation)
-        // token_amount is already with decimals (e.g., 1_000_000 for 1 token)
-        let token_amount_without_decimals = token_amount
-            .checked_div(1_000_000)
-            .ok_or(RwaError::DivideByZero)?;
+        // Reverse of: tokens = (usd * 1_000_000) / rate
+        // So: usd = tokens * rate / 1_000_000
+        // Then: lamports = (usd / sol_price) * 1_000_000_000
+        // Combined with precision: lamports = (tokens * rate * 1_000_000_000) / (1_000_000 * sol_price)
 
-        let sol_amount_usd = token_amount_without_decimals
+        let lamports = token_amount
             .checked_mul(circle_rate)
-            .ok_or(RwaError::Overflow)?;
-
-        let sol_units = sol_amount_usd
-            .checked_div(sol_price_usd)
+            .and_then(|v| v.checked_mul(1_000_000_000))
+            .and_then(|v| v.checked_div(1_000_000))
+            .and_then(|v| v.checked_div(sol_price_usd))
             .ok_or(RwaError::DivideByZero)?;
-
-        let lamports = sol_units
-            .checked_mul(1_000_000_000)
-            .ok_or(RwaError::Overflow)?;
 
         require!(lamports > 0, RwaError::InvalidAmount);
 
-        msg!("   USD value: ${}", sol_amount_usd);
-        msg!("   SOL amount: {}", sol_units);
         msg!("   Lamports to return: {}", lamports);
 
         // Check vault has sufficient balance
-        require!(
-            self.vault.balance >= lamports,
-            RwaError::InsufficientFunds
-        );
+        require!(self.vault.balance >= lamports, RwaError::InsufficientFunds);
 
         // Burn tokens from user's ATA
         let cpi_accounts = Burn {
@@ -127,22 +115,18 @@ impl<'info> Sell<'info> {
 
         msg!("   Total city supply: {}", self.city_config.total_supply);
 
-        // Transfer SOL from vault to user
-        let binding = self.admin.key();
-        let seeds: &[&[u8]] = &[b"protocol_admin", binding.as_ref(), &[vault_bump]];
-        let signer_seeds = &[&seeds[..]];
+        // Transfer SOL from vault to user by directly manipulating lamports
+        // We can't use system program transfer because vault account has data
+        // Instead, subtract from vault and add to user
+        let vault_info = self.vault.to_account_info();
+        let mut vault_lamps = vault_info.lamports.borrow_mut();
+        **vault_lamps -= lamports;
+        drop(vault_lamps);
 
-        let ix = transfer(&self.vault.key(), &self.user.key(), lamports);
-
-        invoke_signed(
-            &ix,
-            &[
-                self.vault.to_account_info(),
-                self.user.to_account_info(),
-                self.system_program.to_account_info(),
-            ],
-            signer_seeds,
-        )?;
+        let user_info = self.user.to_account_info();
+        let mut user_lamps = user_info.lamports.borrow_mut();
+        **user_lamps += lamports;
+        drop(user_lamps);
 
         // Update vault balance
         self.vault.balance = self
