@@ -70,6 +70,7 @@ impl<'info> Buy<'info> {
         circle_rate: u64,
         sol_price_usd: u64,
         vault_bump: u8,
+        metadata_uri: String,
     ) -> Result<()> {
         require!(circle_rate > 0, RwaError::RateNotValid);
         require!(sol_price_usd > 0, RwaError::RateNotValid);
@@ -79,10 +80,12 @@ impl<'info> Buy<'info> {
             self.city_config.mint = self.city_mint.key();
             self.city_config.city_name = city_name.clone();
             self.city_config.total_supply = 0;
-            msg!("🏙️ NEW CITY TOKEN CREATED: {}", city_name);
+            self.city_config.metadata_uri = metadata_uri.clone();
+            msg!("NEW CITY TOKEN CREATED: {}", city_name);
             msg!("   Mint address: {}", self.city_mint.key());
+            msg!("   Metadata URI: {}", metadata_uri);
         } else {
-            msg!("🏙️ Buying existing city token: {}", city_name);
+            msg!("Buying existing city token: {}", city_name);
             msg!("   Mint address: {}", self.city_mint.key());
         }
 

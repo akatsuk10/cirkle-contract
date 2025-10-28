@@ -25,6 +25,7 @@ pub mod cirkle_contract {
         sol_amount: u64,
         circle_rate: u64,
         sol_price_usd: u64,
+        metadata_uri: String,
     ) -> Result<()> {
         let vault_bump = ctx.bumps.vault;
         ctx.accounts.buy_token(
@@ -33,6 +34,7 @@ pub mod cirkle_contract {
             circle_rate,
             sol_price_usd,
             vault_bump,
+            metadata_uri,
         )?;
         Ok(())
     }

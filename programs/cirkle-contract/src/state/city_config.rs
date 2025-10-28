@@ -8,4 +8,6 @@ pub struct CityConfig {
     pub mint: Pubkey,
     pub total_supply: u64,
     pub bump: u8,
+    #[max_len(128)]
+    pub metadata_uri: String,
 }
