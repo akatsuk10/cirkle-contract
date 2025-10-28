@@ -16,4 +16,6 @@ pub enum RwaError {
     AmountNotValid,
     #[msg("Invalid Mint")]
     InvalidMint,
+    #[msg("Invalid Amount")]
+    InvalidAmount,
 }
