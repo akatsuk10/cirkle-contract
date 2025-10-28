@@ -82,7 +82,9 @@ impl<'info> Buy<'info> {
         require!(sol_price_usd > 0, RwaError::RateNotValid);
         require!(lamports > 0, RwaError::InvalidAmount);
 
-        if self.city_config.mint == Pubkey::default() {
+        let is_new_city = self.city_config.mint == Pubkey::default();
+
+        if is_new_city {
             self.city_config.mint = self.city_mint.key();
             self.city_config.city_name = city_name.clone();
             self.city_config.total_supply = 0;
@@ -170,7 +172,7 @@ impl<'info> Buy<'info> {
 
         msg!(" Tokens minted successfully!");
 
-        if self.city_config.mint == self.city_mint.key() {
+        if is_new_city {
             msg!("Creating Metaplex metadata for token...");
 
             let symbol = city_name.chars().take(10).collect::<String>();
