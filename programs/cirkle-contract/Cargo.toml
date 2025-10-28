@@ -23,3 +23,4 @@ custom-panic = []
 [dependencies]
 anchor-lang ={version = "0.31.1",features = ["init-if-needed"]}
 anchor-spl = { version = "0.31.1", features = ["metadata"] }
+mpl-token-metadata = "5.1.1"

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
+    metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3},
     token::{self, Mint, MintTo, Token, TokenAccount},
 };
 
@@ -60,6 +61,11 @@ pub struct Buy<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
+
+    #[account(mut)]
+    /// CHECK: Metaplex will verify this is the correct metadata PDA
+    pub metadata: UncheckedAccount<'info>,
+    pub token_metadata_program: Program<'info, anchor_spl::metadata::Metadata>,
 }
 
 impl<'info> Buy<'info> {
@@ -163,6 +169,45 @@ impl<'info> Buy<'info> {
         token::mint_to(cpi_ctx, token_amount_with_decimals)?;
 
         msg!(" Tokens minted successfully!");
+
+        if self.city_config.mint == self.city_mint.key() {
+            msg!("Creating Metaplex metadata for token...");
+
+            let symbol = city_name.chars().take(10).collect::<String>();
+
+            let cpi_program = self.token_metadata_program.to_account_info();
+            let cpi_accounts = CreateMetadataAccountsV3 {
+                metadata: self.metadata.to_account_info(),
+                mint: self.city_mint.to_account_info(),
+                mint_authority: self.vault.to_account_info(),
+                update_authority: self.vault.to_account_info(),
+                payer: self.user.to_account_info(),
+                system_program: self.system_program.to_account_info(),
+                rent: self.rent.to_account_info(),
+            };
+
+            let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+
+            let data = mpl_token_metadata::types::DataV2 {
+                name: city_name.clone(),
+                symbol,
+                uri: metadata_uri.clone(),
+                seller_fee_basis_points: 0,
+                creators: None,
+                collection: None,
+                uses: None,
+            };
+
+            create_metadata_accounts_v3(
+                cpi_ctx,
+                data,
+                false,
+                true,
+                None,
+            )?;
+
+            msg!("Metadata created successfully!");
+        }
 
         Ok(())
     }
