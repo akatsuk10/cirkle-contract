@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("5s8sxuXaNoJp1imQ6uD89jGefKXXL1jgcNE7xUYFPgrs");
+declare_id!("Es7CnmurWMiDfEUCrFVBpHvWy7jqdVHf8a7mtMnN7bmg");
 mod instructions;
 mod state;
 mod error;
@@ -17,9 +17,9 @@ pub mod cirkle_contract {
         Ok(())
     }
 
-    pub fn buy(ctx:Context<Buy>,city_name:String,circle_rate:u64,sol_amount:u64,sol_price_usd:u64)->Result<()>{
+    pub fn buy(ctx:Context<Buy>,city_name:String,sol_amount:u64,circle_rate:u64,sol_price_usd:u64)->Result<()>{
         let vault_bump = ctx.bumps.vault;
-        ctx.accounts.buy_token(city_name, sol_amount, circle_rate,sol_price_usd,vault_bump)?;
+        ctx.accounts.buy_token(city_name, sol_amount, circle_rate, sol_price_usd, vault_bump)?;
         Ok(())
     }
     pub fn sell(ctx:Context<Sell>,city_name: String,circle_rate:u64,sol_price_usd: u64,token_amount:u64)->Result<()>{

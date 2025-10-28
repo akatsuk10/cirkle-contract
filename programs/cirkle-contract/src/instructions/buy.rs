@@ -66,9 +66,9 @@ impl<'info> Buy<'info> {
     pub fn buy_token(
         &mut self,
         city_name: String,
-        lamports: u64,      
-        circle_rate: u64,  
-        sol_price_usd: u64, 
+        lamports: u64,
+        circle_rate: u64,
+        sol_price_usd: u64,
         vault_bump: u8,
     ) -> Result<()> {
         require!(circle_rate > 0, RwaError::RateNotValid);
@@ -86,30 +86,31 @@ impl<'info> Buy<'info> {
             msg!("   Mint address: {}", self.city_mint.key());
         }
 
-        
+        // Multiply first, then divide to preserve precision
+        let sol_amount_usd = lamports
+            .checked_mul(sol_price_usd)
+            .and_then(|v| v.checked_div(1_000_000_000))
+            .ok_or(RwaError::DivideByZero)?;
+
+        // Apply decimals BEFORE dividing to preserve precision
+        // tokens = (USD value * 1_000_000) / rate
+        let token_amount_with_decimals = sol_amount_usd
+            .checked_mul(1_000_000)
+            .and_then(|v| v.checked_div(circle_rate))
+            .ok_or(RwaError::DivideByZero)?;
+
+        // Calculate sol units for logging
         let sol_units = lamports
             .checked_div(1_000_000_000)
-            .ok_or(RwaError::DivideByZero)?;
-
-        let sol_amount_usd = sol_units
-            .checked_mul(sol_price_usd)
-            .ok_or(RwaError::Overflow)?;
-
-        let token_amount = sol_amount_usd
-            .checked_div(circle_rate)
-            .ok_or(RwaError::DivideByZero)?;
-
-        let token_amount_with_decimals = token_amount
-            .checked_mul(1_000_000)
-            .ok_or(RwaError::Overflow)?;
-
+            .unwrap_or(0);
 
         msg!("   PURCHASE DETAILS:");
         msg!("   User: {}", self.user.key());
         msg!("   City: {}", city_name);
         msg!("   Lamports paid: {}", lamports);
-        msg!("   SOL amount: {}", sol_units);
+        msg!("   SOL amount: {}.{}", sol_units, lamports % 1_000_000_000);
         msg!("   USD value: ${}", sol_amount_usd);
+        msg!("   Rate per token: ${}", circle_rate);
         msg!(
             "   Tokens to mint: {} (with decimals)",
             token_amount_with_decimals
