@@ -10,7 +10,6 @@ mod state;
 use instructions::*;
 #[program]
 pub mod cirkle_contract {
-
     use super::*;
 
     pub fn vault_initialize(ctx: Context<AdminVault>) -> Result<()> {
@@ -59,4 +58,25 @@ pub mod cirkle_contract {
         ctx.accounts.withdraw(amount)?;
         Ok(())
     }
+    pub fn stake_initialize(ctx: Context<InitializeStakeVault>) -> Result<()> {
+        let bump = ctx.bumps.admin_vault;
+        ctx.accounts.initialize_stake_vault(bump)?;
+        Ok(())
+    }
+    pub fn stake(ctx: Context<StakeCity>, amount: u64) -> Result<()> {
+        let bump = ctx.bumps.user_stake;
+        ctx.accounts.stake_city(amount, bump)?;
+        Ok(())
+    }
+    pub fn unstake(ctx: Context<UnstakeCity>,population:u64, amount: u64) -> Result<()> {
+        let bump = ctx.bumps.admin_vault;
+        ctx.accounts.unstake_city(amount, population,bump)?;
+        Ok(())
+    }
+    pub fn claim(ctx: Context<ClaimReward>, population:u64) -> Result<()> {
+        let bump = ctx.bumps.admin_vault;
+        ctx.accounts.claim_reward(population,bump)?;
+        Ok(())
+    }
+
 }

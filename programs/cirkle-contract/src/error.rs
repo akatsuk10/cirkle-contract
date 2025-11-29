@@ -18,4 +18,10 @@ pub enum RwaError {
     InvalidMint,
     #[msg("Invalid Amount")]
     InvalidAmount,
+    #[msg("Insufficient Staked Amount")]
+    InsufficientStakedAmount,
+    #[msg("Nothing Staked")]
+    NothingStaked,
+    #[msg("No Rewards Available")]
+    NoRewardsAvailable,
 }
