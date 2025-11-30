@@ -3,9 +3,8 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 
 use crate::error::RwaError;
-use crate::state::{StakeVault, UserStake};
+use crate::state::{UserStake, Vault};
 
-const BASE_RATE: u64 = 1;
 
 #[derive(Accounts)]
 pub struct UnstakeCity<'info> {
@@ -19,10 +18,10 @@ pub struct UnstakeCity<'info> {
 
     #[account(
         mut,
-        seeds = [b"admin_stake", admin.key.as_ref()],
+        seeds = [b"protocol_admin", admin.key.as_ref()],
         bump
     )]
-    pub admin_vault: Account<'info, StakeVault>,
+    pub admin_vault: Account<'info, Vault>,
 
     #[account(
         mut,
@@ -49,27 +48,19 @@ pub struct UnstakeCity<'info> {
     )]
     pub stake_vault_ata: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = user_cirkle_ata.owner == user.key(),
-        constraint = user_cirkle_ata.mint == admin_vault.cirkle_mint
-    )]
-    pub user_cirkle_ata: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        constraint = admin_cirkle_vault.mint == admin_vault.cirkle_mint,
-        constraint = admin_cirkle_vault.owner == admin_vault.key()
-    )]
-    pub admin_cirkle_vault: Account<'info, TokenAccount>,
-
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> UnstakeCity<'info> {
-    pub fn unstake_city(&mut self, amount: u64, population: u64,vault_bump:u8) -> Result<()> {
+    pub fn unstake_city(
+        &mut self,
+        amount: u64,
+        vault_bump: u8,
+        city_price_usd: u64,
+        sol_price_usd: u64,
+    ) -> Result<()> {
         require!(amount > 0, RwaError::InvalidAmount);
 
         let user_stake = &mut self.user_stake;
@@ -79,38 +70,38 @@ impl<'info> UnstakeCity<'info> {
             RwaError::InsufficientStakedAmount
         );
 
+        require!(user_stake.staked_amount > 0, RwaError::NothingStaked);
+        require!(city_price_usd > 0, RwaError::InvalidPrice);
+        require!(sol_price_usd > 0, RwaError::InvalidPrice);
+
         let now = Clock::get()?.unix_timestamp;
-        let stake_start = user_stake.stake_start;
+        let seconds_staked = (now - user_stake.stake_start).max(0) as u64;
 
-        let seconds_staked = now - stake_start;
-        let days_staked = (seconds_staked / 86400).max(0) as u64;
+        let seconds_per_year: u64 = 31_536_000;
 
-        let mut multiplier = population / 1_000_000;
-        if multiplier < 5 {
-            multiplier = 5;
-        }
-        if multiplier > 10 {
-            multiplier = 10;
-        }
-
-        let reward = amount
-            .checked_mul(days_staked)
-            .unwrap()
-            .checked_mul(multiplier)
-            .unwrap()
-            .checked_mul(BASE_RATE)
+        let city_value_usd = user_stake
+            .staked_amount
+            .checked_mul(city_price_usd)
             .unwrap();
 
+        let city_value_sol = city_value_usd.checked_div(sol_price_usd).unwrap();
+
+        let reward = city_value_sol
+            .checked_mul(seconds_staked)
+            .unwrap()
+            .checked_mul(6)
+            .unwrap()
+            .checked_div(100)
+            .unwrap()
+            .checked_div(seconds_per_year)
+            .unwrap();
         if reward > 0 {
-            let admin_seeds: &[&[u8]] = &[
-                b"admin_stake",
-                self.admin.key.as_ref(),
-                &[vault_bump],
-            ];
+            let admin_seeds: &[&[u8]] =
+                &[b"protocol_admin", self.admin.key.as_ref(), &[vault_bump]];
 
             let cpi_reward = Transfer {
-                from: self.admin_cirkle_vault.to_account_info(),
-                to: self.user_cirkle_ata.to_account_info(),
+                from: self.admin_vault.to_account_info(),
+                to: self.user.to_account_info(),
                 authority: self.admin_vault.to_account_info(),
             };
 
@@ -124,7 +115,6 @@ impl<'info> UnstakeCity<'info> {
             )?;
         }
 
-       
         let binding = self.city_mint.key();
         let stake_seeds: &[&[u8]] = &[
             b"stake",

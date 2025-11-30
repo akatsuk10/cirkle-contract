@@ -1,9 +1,6 @@
 pub mod vault;
 pub use vault::*;
 
-pub mod admin_vault;
-pub use admin_vault::*;
-
 pub mod user_stake;
 pub use user_stake::*;
 

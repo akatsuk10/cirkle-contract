@@ -24,4 +24,6 @@ pub enum RwaError {
     NothingStaked,
     #[msg("No Rewards Available")]
     NoRewardsAvailable,
+    #[msg("Invalid Price")]
+    InvalidPrice,
 }

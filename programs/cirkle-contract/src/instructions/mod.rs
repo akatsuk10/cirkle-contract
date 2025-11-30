@@ -7,9 +7,6 @@ pub use buy::*;
 pub mod withdraw;
 pub use withdraw::*;
 
-pub mod initialize_stake_pool;
-pub use initialize_stake_pool::*;
-
 pub mod stake;
 pub use stake::*;
 
