@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-cirkle_contract = "Es7CnmurWMiDfEUCrFVBpHvWy7jqdVHf8a7mtMnN7bmg"
+cirkle_contract = "4rGhCxGhfqRnmsNzwe9e9VUE6nFvfXuxmep6BUhbcrne"
 
 [registry]
 url = "https://api.apr.dev"

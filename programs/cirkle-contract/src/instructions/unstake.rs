@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program::{self, Transfer as SystemTransfer};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 
 use crate::error::RwaError;
 use crate::state::{UserStake, Vault};
-
 
 #[derive(Accounts)]
 pub struct UnstakeCity<'info> {
@@ -96,23 +96,24 @@ impl<'info> UnstakeCity<'info> {
             .checked_div(seconds_per_year)
             .unwrap();
         if reward > 0 {
-            let admin_seeds: &[&[u8]] =
-                &[b"protocol_admin", self.admin.key.as_ref(), &[vault_bump]];
+            // Transfer reward SOL from vault to user via system program
+            let admin_key = self.admin.key();
+            let admin_seeds: &[&[u8]] = &[b"protocol_admin", admin_key.as_ref(), &[vault_bump]];
 
-            let cpi_reward = Transfer {
+            let cpi_account = SystemTransfer {
                 from: self.admin_vault.to_account_info(),
                 to: self.user.to_account_info(),
-                authority: self.admin_vault.to_account_info(),
             };
 
-            transfer(
-                CpiContext::new_with_signer(
-                    self.token_program.to_account_info(),
-                    cpi_reward,
-                    &[admin_seeds],
-                ),
-                reward,
-            )?;
+            let binding = [admin_seeds];
+
+            let cpi_ctx = CpiContext::new_with_signer(
+                self.system_program.to_account_info(),
+                cpi_account,
+                &binding,
+            );
+
+            system_program::transfer(cpi_ctx, reward)?;
         }
 
         let binding = self.city_mint.key();
