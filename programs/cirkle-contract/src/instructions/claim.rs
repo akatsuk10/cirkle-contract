@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program::{self, Transfer as SystemTransfer};
 use anchor_spl::token::{Mint, Token};
 
 use crate::error::RwaError;
@@ -74,21 +73,17 @@ impl<'info> ClaimReward<'info> {
 
         require!(reward > 0, RwaError::NoRewardsAvailable);
 
-        let admin_seeds: &[&[u8]] = &[b"protocol_admin", self.admin.key.as_ref(), &[vault_bump]];
+        let vault_account = self.admin_vault.to_account_info();
+        let user_account = self.user.to_account_info();
 
-        let cpi_account = SystemTransfer {
-            from: self.admin_vault.to_account_info(),
-            to: self.user.to_account_info(),
-        };
-
-        let binding = [admin_seeds];
-        let cpi_ctx = CpiContext::new_with_signer(
-            self.system_program.to_account_info(),
-            cpi_account,
-            &binding,
-        );
-
-        system_program::transfer(cpi_ctx, reward)?;
+        **vault_account.lamports.borrow_mut() = vault_account
+            .lamports()
+            .checked_sub(reward)
+            .ok_or(ProgramError::InsufficientFunds)?;
+        **user_account.lamports.borrow_mut() = user_account
+            .lamports()
+            .checked_add(reward)
+            .ok_or(ProgramError::ArithmeticOverflow)?;
 
         user_stake.stake_start = now;
 

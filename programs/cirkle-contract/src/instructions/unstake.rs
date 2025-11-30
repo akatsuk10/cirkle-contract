@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program::{self, Transfer as SystemTransfer};
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
 
@@ -96,24 +95,17 @@ impl<'info> UnstakeCity<'info> {
             .checked_div(seconds_per_year)
             .unwrap();
         if reward > 0 {
-            // Transfer reward SOL from vault to user via system program
-            let admin_key = self.admin.key();
-            let admin_seeds: &[&[u8]] = &[b"protocol_admin", admin_key.as_ref(), &[vault_bump]];
+            let vault_account = self.admin_vault.to_account_info();
+            let user_account = self.user.to_account_info();
 
-            let cpi_account = SystemTransfer {
-                from: self.admin_vault.to_account_info(),
-                to: self.user.to_account_info(),
-            };
-
-            let binding = [admin_seeds];
-
-            let cpi_ctx = CpiContext::new_with_signer(
-                self.system_program.to_account_info(),
-                cpi_account,
-                &binding,
-            );
-
-            system_program::transfer(cpi_ctx, reward)?;
+            **vault_account.lamports.borrow_mut() = vault_account
+                .lamports()
+                .checked_sub(reward)
+                .ok_or(ProgramError::InsufficientFunds)?;
+            **user_account.lamports.borrow_mut() = user_account
+                .lamports()
+                .checked_add(reward)
+                .ok_or(ProgramError::ArithmeticOverflow)?;
         }
 
         let binding = self.city_mint.key();
