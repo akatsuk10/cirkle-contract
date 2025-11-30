@@ -60,7 +60,8 @@ pub mod cirkle_contract {
     }
     pub fn stake(ctx: Context<StakeCity>, amount: u64) -> Result<()> {
         let bump = ctx.bumps.user_stake;
-        ctx.accounts.stake_city(amount, bump)?;
+        ctx.accounts.user_stake.bump = bump;
+        ctx.accounts.stake_city(amount)?;
         Ok(())
     }
     pub fn unstake(
@@ -78,6 +79,10 @@ pub mod cirkle_contract {
         let bump = ctx.bumps.admin_vault;
         ctx.accounts
             .claim_reward(bump, city_price_usd, sol_price_usd)?;
+        Ok(())
+    }
+    pub fn close_stake(ctx: Context<CloseStake>) -> Result<()> {
+        ctx.accounts.close_stake()?;
         Ok(())
     }
 }

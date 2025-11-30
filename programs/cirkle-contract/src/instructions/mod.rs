@@ -18,3 +18,6 @@ pub use claim::*;
 
 pub mod sell;
 pub use sell::*;
+
+pub mod close_stake;
+pub use close_stake::*;
