@@ -22,7 +22,7 @@ pub struct StakeCity<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        space = UserStake::INIT_SPACE,
+        space = 8 + UserStake::INIT_SPACE,
         seeds = [
             b"stake",
             user.key.as_ref(),
@@ -46,7 +46,7 @@ pub struct StakeCity<'info> {
 }
 
 impl<'info> StakeCity<'info> {
-    pub fn stake_city(&mut self, amount: u64, stake_bump: u8) -> Result<()> {
+    pub fn stake_city(&mut self, amount: u64) -> Result<()> {
         require!(amount > 0, RwaError::InvalidAmount);
 
         let user = &self.user;
@@ -58,7 +58,7 @@ impl<'info> StakeCity<'info> {
             user_stake.staked_amount = 0;
             user_stake.stake_start = 0;
             user_stake.vault_ata = self.stake_vault_ata.key();
-            user_stake.bump = stake_bump;
+            user_stake.bump = 0;
         }
 
         let cpi_accounts = Transfer {
