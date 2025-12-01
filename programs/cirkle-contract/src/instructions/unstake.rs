@@ -56,7 +56,6 @@ impl<'info> UnstakeCity<'info> {
     pub fn unstake_city(
         &mut self,
         amount: u64,
-        vault_bump: u8,
         city_price_usd: u64,
         sol_price_usd: u64,
     ) -> Result<()> {

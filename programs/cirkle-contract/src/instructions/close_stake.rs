@@ -6,8 +6,10 @@ pub struct CloseStake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
+    ///CHECK:city mint
     pub city_mint: UncheckedAccount<'info>,
 
+    ///CHECK:USER STAKE
     #[account(
         mut,
         seeds = [

@@ -70,15 +70,13 @@ pub mod cirkle_contract {
         city_price_usd: u64,
         sol_price_usd: u64,
     ) -> Result<()> {
-        let bump = ctx.bumps.admin_vault;
         ctx.accounts
-            .unstake_city(amount, bump, city_price_usd, sol_price_usd)?;
+            .unstake_city(amount, city_price_usd, sol_price_usd)?;
         Ok(())
     }
     pub fn claim(ctx: Context<ClaimReward>, city_price_usd: u64, sol_price_usd: u64) -> Result<()> {
-        let bump = ctx.bumps.admin_vault;
         ctx.accounts
-            .claim_reward(bump, city_price_usd, sol_price_usd)?;
+            .claim_reward(city_price_usd, sol_price_usd)?;
         Ok(())
     }
     pub fn close_stake(ctx: Context<CloseStake>) -> Result<()> {

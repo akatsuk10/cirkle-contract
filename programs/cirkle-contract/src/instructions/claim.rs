@@ -39,7 +39,6 @@ pub struct ClaimReward<'info> {
 impl<'info> ClaimReward<'info> {
     pub fn claim_reward(
         &mut self,
-        vault_bump: u8,
         city_price_usd: u64,
         sol_price_usd: u64,
     ) -> Result<()> {
